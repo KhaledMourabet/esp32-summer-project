@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Join Trivia Game</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: sans-serif;
+      background: #1B3A6B;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 36px 28px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+    }
+
+    .color-dot {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+    }
+
+    h1 {
+      font-size: 1.3rem;
+      color: #1B3A6B;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #64748B;
+      margin-bottom: 28px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 1.1rem;
+      border: 2px solid #DBEAFE;
+      border-radius: 10px;
+      outline: none;
+      color: #1E293B;
+      margin-bottom: 16px;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus {
+      border-color: #2563EB;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 10px;
+      background: #2563EB;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #1B3A6B; }
+    button:disabled { background: #94A3B8; cursor: not-allowed; }
+
+    .success {
+      display: none;
+      margin-top: 20px;
+      padding: 14px;
+      background: #DCFCE7;
+      border-radius: 10px;
+      color: #15803D;
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .error-msg {
+      display: none;
+      margin-top: 12px;
+      color: #DC2626;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <!-- Color dot and player label are set by JS based on ?player= param -->
+  <div class="color-dot" id="color-dot"></div>
+  <h1 id="player-label">Trivia Game</h1>
+  <p class="subtitle">Enter your name to join</p>
+
+  <input
+    type="text"
+    id="name-input"
+    placeholder="Your name"
+    maxlength="20"
+    autocomplete="off"
+    autocorrect="off"
+    spellcheck="false"
+  >
+  <button id="join-btn" onclick="submitName()">Join Game</button>
+
+  <div class="success" id="success-msg">
+    ✓ You're in! Watch the screen.
+  </div>
+  <div class="error-msg" id="error-msg"></div>
+</div>
+
+<script>
+  // Read which player this QR code is for from the URL.
+  // e.g. /join?player=P2
+  const params  = new URLSearchParams(window.location.search);
+  const player  = params.get('player') || 'P1';
+
+  const colors  = { P1: '#EAB308', P2: '#EF4444', P3: '#3B82F6', P4: '#22C55E' };
+  const labels  = { P1: 'Yellow Player', P2: 'Red Player', P3: 'Blue Player', P4: 'Green Player' };
+
+  document.getElementById('color-dot').style.background = colors[player] || '#6B7280';
+  document.getElementById('player-label').textContent = labels[player] || player;
+
+  // Focus the input immediately so the phone keyboard opens.
+  document.getElementById('name-input').focus();
+
+  // Allow pressing Enter to submit.
+  document.getElementById('name-input').addEventListener('keypress', e => {
+    if (e.key === 'Enter') submitName();
+  });
+
+  async function submitName() {
+    const nameInput = document.getElementById('name-input');
+    const name = nameInput.value.trim();
+    if (!name) return;
+
+    const btn = document.getElementById('join-btn');
+    btn.disabled = true;
+    btn.textContent = 'Joining...';
+
+    try {
+      // POST to the server with player ID and chosen name.
+      const res = await fetch('/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ player, name }),
+      });
+      const data = await res.json();
+
+      if (data.ok) {
+        // Success — hide the form, show confirmation.
+        nameInput.style.display = 'none';
+        btn.style.display = 'none';
+        document.getElementById('success-msg').style.display = 'block';
+      } else {
+        throw new Error(data.error || 'Unknown error');
+      }
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = 'Join Game';
+      const errEl = document.getElementById('error-msg');
+      errEl.textContent = 'Could not join: ' + err.message;
+      errEl.style.display = 'block';
+    }
+  }
+</script>
+</body>
+</html>
