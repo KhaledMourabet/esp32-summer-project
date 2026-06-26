@@ -35,7 +35,6 @@
 //   4. Players scan QR codes shown on screen and enter names
 //   5. Admin presses button (or click "Start" for testing)
 // ============================================================
-
 'use strict';
 
 const path = require('path');
@@ -296,6 +295,10 @@ wssESP32.on('connection', (ws) => {
           name: players[clientId].name,
           question: currentQuestion ? formatQuestion(currentQuestion) : null,
         });
+        // Task 7: confirm two-way comms with a test message
+        if (clientId === 'P1') {
+          sendToESP32('P1', { type: 'TEST', text: 'Hello P1' });
+        }
       } else {
         console.warn('ESP32 sent HELLO with unknown role:', msg);
       }
@@ -341,6 +344,7 @@ wssESP32.on('connection', (ws) => {
 const httpServer = http.createServer((req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host}`);
   const pathname = urlObj.pathname;
+
 
   // ── POST /join — player submits their name from their phone ──
   if (req.method === 'POST' && pathname === '/join') {
