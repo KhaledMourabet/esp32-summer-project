@@ -84,7 +84,7 @@ function getLocalIP() {
   }
   return 'localhost';
 }
-const LOCAL_IP = getLocalIP();
+const LOCAL_IP = '192.168.1.110';
 console.log(`Local IP detected: ${LOCAL_IP}`);
 
 
@@ -294,7 +294,7 @@ wssESP32.on('connection', (ws) => {
 
   ws.on('message', (data) => {
     let msg;
-    try { msg = JSON.parse(data); }
+    try { msg = JSON.parse(data.toString()); }
     catch (e) { console.error('Bad JSON from ESP32:', data.toString()); return; }
 
     // ── Handle HELLO (identification) ──
