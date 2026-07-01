@@ -267,3 +267,146 @@ body {
         width: 100%;
     }
 }
+
+
+/* ── LOBBY SCREEN ─────────────────────────────────────────── */
+
+.lobby-screen {
+    min-height: 100vh;
+    background: #1B3A6B;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 24px;
+    gap: 24px;
+}
+
+.lobby-screen.hidden,
+.game-screen.hidden {
+    display: none;
+}
+
+.game-screen {
+    display: block;
+}
+
+.lobby-header {
+    text-align: center;
+    color: #fff;
+}
+
+.lobby-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+}
+
+.lobby-subtitle {
+    font-size: 1rem;
+    color: #93C5FD;
+    margin: 0;
+}
+
+/* Four QR cards in a row */
+.lobby-cards {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.lobby-card {
+    background: #fff;
+    border-radius: 14px;
+    padding: 20px 16px;
+    width: 190px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transition: opacity 0.3s;
+}
+
+.lobby-card-inactive {
+    opacity: 0.4;
+}
+
+.lobby-card-joined {
+    box-shadow: 0 0 0 3px #22C55E, 0 4px 20px rgba(0,0,0,0.2);
+}
+
+.lobby-card-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.lobby-color-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.lobby-player-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1B3A6B;
+    flex: 1;
+}
+
+.skip-btn {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border: 1px solid #CBD5E1;
+    border-radius: 6px;
+    background: #F1F5F9;
+    color: #64748B;
+    cursor: pointer;
+}
+
+.skip-btn:hover {
+    background: #E2E8F0;
+}
+
+/* QR image container */
+.lobby-qr {
+    width: 140px;
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.qr-placeholder {
+    font-size: 0.8rem;
+    color: #94A3B8;
+}
+
+.lobby-status {
+    font-size: 0.85rem;
+    color: #64748B;
+    text-align: center;
+    font-weight: 500;
+    min-height: 1.2em;
+}
+
+.lobby-footer {
+    text-align: center;
+    color: #93C5FD;
+}
+
+#lobby-hint {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    margin: 0 0 6px 0;
+}
+
+.lobby-tip {
+    font-size: 0.85rem;
+    color: #93C5FD;
+    margin: 0;
+}

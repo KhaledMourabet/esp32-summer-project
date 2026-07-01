@@ -35,6 +35,7 @@
 //   4. Players scan QR codes shown on screen and enter names
 //   5. Admin presses button (or click "Start" for testing)
 // ============================================================
+
 'use strict';
 
 const path = require('path');
@@ -59,14 +60,29 @@ const WS_ESP32_PORT   = 8081;  // ESP32s connect here
 // This is the IP players need to reach the join page on their phones.
 function getLocalIP() {
   const interfaces = os.networkInterfaces();
+  // Prefer interfaces whose name suggests WiFi or Ethernet.
+  // This filters out WSL virtual adapters (vEthernet, WSL)
+  // which would give the wrong IP for QR codes and ESP32 connections.
+  const preferred = ['wi-fi', 'wifi', 'wlan', 'ethernet', 'en0', 'en1', 'eth'];
   for (const name of Object.keys(interfaces)) {
+    const nameLower = name.toLowerCase();
+    const isPreferred = preferred.some(p => nameLower.includes(p));
+    if (!isPreferred) continue;
     for (const iface of interfaces[name]) {
       if (iface.family === 'IPv4' && !iface.internal) {
         return iface.address;
       }
     }
   }
-  return 'localhost'; // fallback if no network found
+  // Fallback: return the first non-internal IPv4 that isn't 172.x (WSL range)
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal && !iface.address.startsWith('172.')) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
 }
 const LOCAL_IP = getLocalIP();
 console.log(`Local IP detected: ${LOCAL_IP}`);
@@ -115,10 +131,10 @@ let buzzer = null; // 'P1'|'P2'|'P3'|'P4' or null
 // Player data. Names start empty — filled via QR code join page.
 // readyToStart becomes true once all 4 names are set.
 const players = {
-  P1: { name: '', score: 0, joined: false },
-  P2: { name: '', score: 0, joined: false },
-  P3: { name: '', score: 0, joined: false },
-  P4: { name: '', score: 0, joined: false },
+  P1: { name: '', score: 0, joined: false, inactive: false },
+  P2: { name: '', score: 0, joined: false, inactive: false },
+  P3: { name: '', score: 0, joined: false, inactive: false },
+  P4: { name: '', score: 0, joined: false, inactive: false },
 };
 
 function allPlayersJoined() {
@@ -205,6 +221,11 @@ wssBrowser.on('connection', (ws) => {
       // without the physical admin ESP32).
       if (msg.type === 'ADMIN') {
         handleAdminPress();
+      }
+      // Skip a player slot — marks them inactive so the game
+      // can start without all 4 players joining.
+      if (msg.type === 'SKIP_PLAYER' && players[msg.player] !== undefined) {
+        skipPlayer(msg.player);
       }
     } catch (e) {
       console.error('Bad message from browser:', data.toString());
@@ -295,10 +316,6 @@ wssESP32.on('connection', (ws) => {
           name: players[clientId].name,
           question: currentQuestion ? formatQuestion(currentQuestion) : null,
         });
-        // Task 7: confirm two-way comms with a test message
-        if (clientId === 'P1') {
-          sendToESP32('P1', { type: 'TEST', text: 'Hello P1' });
-        }
       } else {
         console.warn('ESP32 sent HELLO with unknown role:', msg);
       }
@@ -344,7 +361,6 @@ wssESP32.on('connection', (ws) => {
 const httpServer = http.createServer((req, res) => {
   const urlObj = new URL(req.url, `http://${req.headers.host}`);
   const pathname = urlObj.pathname;
-
 
   // ── POST /join — player submits their name from their phone ──
   if (req.method === 'POST' && pathname === '/join') {
@@ -415,6 +431,27 @@ httpServer.listen(HTTP_PORT, () => {
 
 
 // ── GAME LOGIC ────────────────────────────────────────────────
+
+// skipPlayer() marks a player slot as inactive.
+// The lobby card shows "Inactive" and that slot is ignored
+// for buzzing and scoring. The game can start without them.
+function skipPlayer(player) {
+  if (players[player].joined) return; // can't skip someone who already joined
+  players[player].inactive = true;
+  players[player].joined   = true;   // counts as "ready" for lobby purposes
+  players[player].name     = 'Inactive';
+  console.log(`${player} marked as inactive.`);
+
+  broadcastToBrowser({ type: 'PLAYER_JOINED', player, name: 'Inactive', players });
+
+  // If all slots are now either joined or inactive, start the game.
+  if (gameState === STATE.LOBBY && allPlayersJoined()) {
+    gameState = STATE.IDLE;
+    console.log('All slots ready. Moving to IDLE.');
+    broadcastStateToBrowser();
+    broadcastToESP32s({ type: 'STATE', state: STATE.IDLE });
+  }
+}
 
 // setPlayerName() is called when a player submits their name
 // via the QR join page (HTTP POST /join).
@@ -554,6 +591,9 @@ function handlePlayerPress(player) {
   // Only accept buzzes during QUESTION or BUZZABLE states.
   // In the new flow, players can buzz as soon as the question appears.
   if (gameState !== STATE.QUESTION && gameState !== STATE.BUZZABLE) return;
+
+  // Ignore inactive players.
+  if (players[player].inactive) return;
 
   // Only the first press counts.
   if (buzzer !== null) return;
