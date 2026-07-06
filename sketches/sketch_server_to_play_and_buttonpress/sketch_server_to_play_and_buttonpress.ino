@@ -4,18 +4,20 @@
 #include <WebSocketsClient.h>
 
 // ───── WIFI ─────
-const char* ssid = "SODETEL";
-const char* password = "12120811";
+const char* ssid     = "Clarissa";
+const char* password = "clar1234";
 
 // ───── SERVER ─────
-const char* server_ip = "192.168.1.6"; //CHANGE THIS
-const int server_port = 8081;
+const char* server_ip  = "172.20.10.2"; // CHANGE THIS
+const int   server_port = 8081;
 
 // ───── PLAYER ID ─────
+// Change this for each ESP32: "P1", "P2", "P3", or "P4"
 const char* playerID = "P1";
 
-// ───── BUTTON ─────
-#define BUTTON_PIN 2
+// ───── PINS ─────
+#define BUTTON_PIN 3   // button switch → pin 3 → GND (INPUT_PULLUP)
+#define LED_PIN    10  // button's integrated LED via transistor
 
 // ───── OLED ─────
 U8G2_SSD1306_72X40_ER_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, 6, 5);
@@ -23,6 +25,7 @@ U8G2_SSD1306_72X40_ER_F_HW_I2C u8g2(U8G2_R0, U8X8_PIN_NONE, 6, 5);
 // ───── WEBSOCKET ─────
 WebSocketsClient webSocket;
 
+// ───── BUTTON STATE ─────
 bool lastButtonState = HIGH;
 unsigned long lastPressTime = 0;
 
@@ -36,15 +39,12 @@ void showMsg(const char* a, const char* b = "") {
 }
 
 // ───── WEBSOCKET EVENTS ─────
-void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
-
-  switch(type) {
+void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
+  switch (type) {
 
     case WStype_CONNECTED:
       Serial.println("WebSocket Connected");
-
       showMsg("WS Connected", "HELLO");
-
       webSocket.sendTXT(
         String("{\"type\":\"HELLO\",\"role\":\"PLAYER\",\"player\":\"") +
         playerID +
@@ -56,7 +56,6 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
     {
       String msg = (char*)payload;
       Serial.println(msg);
-
       int idx = msg.indexOf("\"text\":\"");
       if (idx >= 0) {
         int start = idx + 8;
@@ -71,15 +70,19 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
     case WStype_DISCONNECTED:
       Serial.println("WS Disconnected");
       showMsg("Disconnected");
+      // Turn off LED if connection drops mid-game
+      digitalWrite(LED_PIN, LOW);
       break;
   }
 }
 
 // ───── SETUP ─────
 void setup() {
-
   Serial.begin(115200);
+
   pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
 
   u8g2.begin();
   showMsg("Booting...");
@@ -96,7 +99,6 @@ void setup() {
 
   Serial.println("WiFi OK");
   Serial.println(WiFi.localIP());
-
   showMsg("WiFi OK");
 
   webSocket.begin(server_ip, server_port, "/");
@@ -106,29 +108,31 @@ void setup() {
 
 // ───── LOOP ─────
 void loop() {
-
   webSocket.loop();
 
   bool currentButtonState = digitalRead(BUTTON_PIN);
 
-  // TASK 6: send PRESS on button click
+  // Button just pressed (HIGH → LOW)
   if (lastButtonState == HIGH && currentButtonState == LOW) {
-
     unsigned long now = millis();
-
     if (now - lastPressTime > 200) {
       lastPressTime = now;
 
-      Serial.println("Button pressed");
+      digitalWrite(LED_PIN, HIGH); // light button LED immediately
 
+      Serial.println("Button pressed");
       webSocket.sendTXT(
         String("{\"type\":\"PRESS\",\"player\":\"") +
         playerID +
         "\"}"
       );
-
       showMsg("Pressed!", playerID);
     }
+  }
+
+  // Button just released (LOW → HIGH)
+  if (lastButtonState == LOW && currentButtonState == HIGH) {
+    digitalWrite(LED_PIN, LOW); // turn off button LED on release
   }
 
   lastButtonState = currentButtonState;

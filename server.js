@@ -84,7 +84,7 @@ function getLocalIP() {
   }
   return 'localhost';
 }
-const LOCAL_IP = '192.168.1.110';
+const LOCAL_IP = '172.20.10.2'; //change to current IP
 console.log(`Local IP detected: ${LOCAL_IP}`);
 
 

@@ -3,10 +3,10 @@
 #include <U8g2lib.h>
 #include <WebSocketsClient.h>
 // ───── WIFI ─────
-const char* ssid = "PUT SSID";
-const char* password = "PUT PASSWORD";
+const char* ssid = "Clarissa";
+const char* password = "clar1234";
 // ───── SERVER ─────
-const char* server_ip = "192.168.1.110";  // CHANGE THIS
+const char* server_ip = "172.20.10.2";  // CHANGE THIS
 const int server_port = 8081;
 // ───── PLAYER ID ─────
 const char* playerID = "P1";
