@@ -524,14 +524,13 @@ function handleAdminPress() {
       players,
     });
 
-    // Tell ALL player ESP32s to display the question options on their OLEDs.
+    // Tell ALL player ESP32s the category of the new question.
     // This is the core "ESP32 connected to backend" demonstration.
     for (const id of ['P1','P2','P3','P4']) {
       sendToESP32(id, {
         type: 'QUESTION',
-        question: formatted,
+        category: currentQuestion['Category'],
       });
-    }
 
     // Tell admin ESP32 the state changed.
     sendToESP32('ADMIN', { type: 'STATE', state: gameState });

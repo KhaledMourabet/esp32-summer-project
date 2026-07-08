@@ -53,19 +53,33 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
       break;
 
     case WStype_TEXT:
-    {
-      String msg = (char*)payload;
-      Serial.println(msg);
-      int idx = msg.indexOf("\"text\":\"");
-      if (idx >= 0) {
-        int start = idx + 8;
-        int end = msg.indexOf("\"", start);
-        showMsg("MSG:", msg.substring(start, end).c_str());
-      } else {
-        showMsg("SERVER:", msg.c_str());
-      }
-      break;
+{
+  String msg = (char*)payload;
+  Serial.println(msg);
+
+  if (msg.indexOf("\"type\":\"QUESTION\"") >= 0) {
+    // Extract category from the JSON
+    int idx = msg.indexOf("\"category\":\"");
+    if (idx >= 0) {
+      int start = idx + 12;
+      int end = msg.indexOf("\"", start);
+      String category = msg.substring(start, end);
+      showMsg("Category:", category.c_str());
     }
+
+  } else {
+    // Keep existing handler for other messages
+    int idx = msg.indexOf("\"text\":\"");
+    if (idx >= 0) {
+      int start = idx + 8;
+      int end = msg.indexOf("\"", start);
+      showMsg("MSG:", msg.substring(start, end).c_str());
+    } else {
+      showMsg("SERVER:", msg.c_str());
+    }
+  }
+  break;
+}
 
     case WStype_DISCONNECTED:
       Serial.println("WS Disconnected");
