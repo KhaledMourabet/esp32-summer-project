@@ -55,11 +55,6 @@ ws.addEventListener('message', (event) => {
             handleBuzzed(msg);
             break;
  
-        case 'DISQUALIFIED':
-            // A player pressed during the spin. Mark their card.
-            handleDisqualified(msg);
-            break;
- 
         case 'RESULT':
             // Admin selected an answer. Show correct/wrong and update scores.
             handleResult(msg);
@@ -98,14 +93,6 @@ ws.addEventListener('message', (event) => {
 function handleStateMessage(msg) {
     // Update the scoreboard with current scores and names.
     updateScoreboard(msg.players);
- 
-    // Clear any leftover disqualification markers from last round.
-    clearDisqualified();
- 
-    // Re-apply disqualifications if we're mid-round.
-    if (msg.disqualified) {
-        msg.disqualified.forEach(p => markDisqualified(p));
-    }
  
     // Update the page layout based on the current game state.
     switch (msg.state) {
@@ -312,11 +299,10 @@ function updateScoreboard(players) {
         const scoreEl = document.getElementById('score-' + id);
         if (scoreEl) scoreEl.textContent = data.score;
  
-        // Only update the name input placeholder if the input is still visible
-        // (i.e. the player hasn't confirmed their name yet).
-        const input = document.getElementById('name-' + id);
-        if (input && data.name) {
-            input.placeholder = data.name;
+        // Update the player name display on the scoreboard.
+        const nameEl = document.getElementById('name-' + id);
+        if (nameEl && data.name) {
+            nameEl.textContent = data.name;
         }
     }
 }
