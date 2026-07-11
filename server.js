@@ -531,7 +531,7 @@ function handleAdminPress() {
         type: 'QUESTION',
         category: currentQuestion['Category'],
       });
-
+    }
     // Tell admin ESP32 the state changed.
     sendToESP32('ADMIN', { type: 'STATE', state: gameState });
 
