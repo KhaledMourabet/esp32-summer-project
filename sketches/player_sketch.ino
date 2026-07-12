@@ -33,6 +33,11 @@ WebSocketsClient webSocket;
 bool lastButtonState = HIGH;
 unsigned long lastPressTime = 0;
 
+// ───── TASK 18 — RECONNECTION STATE ─────
+unsigned long lastWifiCheckTime = 0;
+const unsigned long WIFI_CHECK_INTERVAL = 5000; // check every 5s
+bool wifiWasConnected = true; // assume connected once setup() finishes
+
 // ───── OLED HELPERS ─────
 void showMsg(const char* a, const char* b = "") {
   u8g2.clearBuffer();
@@ -49,6 +54,38 @@ void showIdleScreen() {
 void animHeader(const char* label) {
   u8g2.setFont(u8g2_font_5x7_tr);
   u8g2.drawStr(2, 7, label);
+}
+
+// ───── TASK 18 — WIFI RECONNECTION ─────
+// Non-blocking check, run from loop() every WIFI_CHECK_INTERVAL ms.
+// If WiFi has dropped, kicks off a reconnect without freezing the
+// rest of the sketch (button reads, webSocket.loop(), etc. keep going).
+void checkWifiConnection() {
+  unsigned long now = millis();
+  if (now - lastWifiCheckTime < WIFI_CHECK_INTERVAL) return;
+  lastWifiCheckTime = now;
+
+  if (WiFi.status() != WL_CONNECTED) {
+    if (wifiWasConnected) {
+      // Just dropped — log/show once, don't spam every check.
+      Serial.println("WiFi lost. Attempting reconnect...");
+      showMsg("WiFi Lost", "Reconnecting");
+      digitalWrite(LED_PIN, LOW); // safety: don't leave button LED stuck on
+      wifiWasConnected = false;
+    }
+    WiFi.reconnect();
+  } else {
+    if (!wifiWasConnected) {
+      Serial.println("WiFi restored.");
+      showMsg("WiFi OK", "Resuming");
+      delay(500);
+      showIdleScreen();
+      wifiWasConnected = true;
+      // webSocket auto-reconnects on its own retry interval, and
+      // WStype_CONNECTED re-sends HELLO so the server re-registers
+      // this player automatically — no extra code needed here.
+    }
+  }
 }
 
 // ───── TASK 15 — RESULT ANIMATIONS ─────
@@ -220,6 +257,8 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.setTxPower(WIFI_POWER_8_5dBm);
+  WiFi.setAutoReconnect(true); // TASK 18 — built-in reconnect safety net
+  WiFi.persistent(true);
   WiFi.begin(ssid, password);
   showMsg("Connecting WiFi");
 
@@ -248,6 +287,7 @@ void setup() {
 
 // ───── LOOP ─────
 void loop() {
+  checkWifiConnection(); // TASK 18 — WiFi reconnection watchdog
   webSocket.loop();
 
   bool currentButtonState = digitalRead(BUTTON_PIN);

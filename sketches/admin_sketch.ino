@@ -30,6 +30,11 @@ WebSocketsClient webSocket;
 bool lastButtonState = HIGH;
 unsigned long lastPressTime = 0;
 
+// ───── TASK 18 — RECONNECTION STATE ─────
+unsigned long lastWifiCheckTime = 0;
+const unsigned long WIFI_CHECK_INTERVAL = 5000; // check every 5s
+bool wifiWasConnected = true; // assume connected once setup() finishes
+
 // ───── OLED HELPER ─────
 void showMsg(const char* a, const char* b = "") {
   u8g2.clearBuffer();
@@ -74,6 +79,38 @@ void ledLose() {
   digitalWrite(LED_C2,     HIGH);
   digitalWrite(LED_C3,     HIGH);
   digitalWrite(LED_CENTER, HIGH);
+}
+
+// ───── TASK 18 — WIFI RECONNECTION ─────
+// Non-blocking check, run from loop() every WIFI_CHECK_INTERVAL ms.
+// If WiFi has dropped, kicks off a reconnect without freezing the
+// rest of the sketch (button reads, webSocket.loop(), etc. keep going).
+void checkWifiConnection() {
+  unsigned long now = millis();
+  if (now - lastWifiCheckTime < WIFI_CHECK_INTERVAL) return;
+  lastWifiCheckTime = now;
+
+  if (WiFi.status() != WL_CONNECTED) {
+    if (wifiWasConnected) {
+      // Just dropped — log/show once, don't spam every check.
+      Serial.println("WiFi lost. Attempting reconnect...");
+      showMsg("WiFi Lost", "Reconnecting");
+      allLedsOff(); // safety: don't leave WIN/LOSE LEDs stuck on mid-drop
+      wifiWasConnected = false;
+    }
+    WiFi.reconnect();
+  } else {
+    if (!wifiWasConnected) {
+      Serial.println("WiFi restored.");
+      showMsg("WiFi OK", "Resuming");
+      delay(500);
+      showMsg("Admin Ready", "Press button");
+      wifiWasConnected = true;
+      // webSocket auto-reconnects on its own retry interval, and
+      // WStype_CONNECTED re-sends HELLO so the server re-registers
+      // this unit automatically — no extra code needed here.
+    }
+  }
 }
 
 // ───── WEBSOCKET EVENTS ─────
@@ -168,6 +205,8 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   WiFi.setTxPower(WIFI_POWER_8_5dBm);
+  WiFi.setAutoReconnect(true); // TASK 18 — built-in reconnect safety net
+  WiFi.persistent(true);
   WiFi.begin(ssid, password);
   showMsg("Connecting", "WiFi...");
 
@@ -196,6 +235,7 @@ void setup() {
 
 // ───── LOOP ─────
 void loop() {
+  checkWifiConnection(); // TASK 18 — WiFi reconnection watchdog
   webSocket.loop();
 
   // Admin button press → advance game state (Task 9)
